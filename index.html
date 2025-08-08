@@ -128,7 +128,9 @@
                     showError("Failed to read the file.");
                     toggleLoading(false);
                 };
-                reader.readAsText(file, 'TIS-620'); // Use TIS-620 encoding for Thai characters
+                
+                // *** REVISED LINE: Specify TIS-620 encoding for Thai characters ***
+                reader.readAsText(file, 'TIS-620');
             });
 
             /**
