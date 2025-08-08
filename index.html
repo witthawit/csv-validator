@@ -129,8 +129,8 @@
                     toggleLoading(false);
                 };
                 
-                // *** REVISED LINE: Specify TIS-620 encoding for Thai characters ***
-                reader.readAsText(file, 'TIS-620');
+                // *** REVISED LINE: Changing encoding to UTF-8, which is the most common standard. ***
+                reader.readAsText(file, 'UTF-8');
             });
 
             /**
