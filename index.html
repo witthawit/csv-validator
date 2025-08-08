@@ -1,216 +1,293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CSV Validator App</title>
-  <!-- Tailwind CSS CDN for styling -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React and React DOM CDNs -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- Babel for compiling JSX in the browser -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- PapaParse for parsing CSV files -->
-  <script src="https://unpkg.com/papaparse@5.3.0/papaparse.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thai Data CSV Validator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 900px;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans antialiased">
-  <div id="root"></div>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="container bg-white p-8 rounded-lg shadow-xl w-full">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Thai Data CSV Validator</h1>
+        <p class="text-center text-gray-600 mb-8">Upload a CSV file to validate Thai ID, Address, and Full Name.</p>
 
-  <script type="text/babel">
-    // Heroicons as SVG strings for direct use in HTML
-    const CheckCircleIcon = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-green-500">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-      </svg>
-    );
-
-    const XCircleIcon = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-red-500">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75 14.25 14.25m0-4.5L9.75 14.25M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-      </svg>
-    );
-
-    const DocumentTextIcon = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12 text-gray-400 mb-4">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-2.25a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 0-1.125 1.125v17.25a1.125 1.125 0 0 0 1.125 1.125h1.5a3.375 3.375 0 0 0 3.375-3.375V15.75m-3.375-2.25h-1.5" />
-      </svg>
-    );
-
-    // Regular expressions for validation
-    const thaiIdRegex = /^\d{13}$/;
-    const thaiCharactersRegex = /[\u0E00-\u0E7F]+/;
-
-    // This is the main application component
-    const App = () => {
-      const [csvData, setCsvData] = React.useState([]);
-      const [validationResults, setValidationResults] = React.useState([]);
-      const [file, setFile] = React.useState(null);
-
-      // Function to validate Thai ID Card using the checksum algorithm
-      const validateThaiId = (id) => {
-        // Check if the ID is a 13-digit number
-        if (!thaiIdRegex.test(id)) {
-          return false;
-        }
-        const digits = id.split('').map(Number);
-        // Checksum algorithm
-        let sum = 0;
-        for (let i = 0; i < 12; i++) {
-          sum += digits[i] * (13 - i);
-        }
-        const checksum = sum % 11;
-        const lastDigit = (11 - checksum) % 10;
-        return digits[12] === lastDigit;
-      };
-
-      // Function to validate Thai Address
-      const validateThaiAddress = (address) => {
-        // A simple validation: check if it contains Thai characters and is not empty.
-        return !!address && thaiCharactersRegex.test(address);
-      };
-
-      // Function to validate Full Name (Thai)
-      const validateFullName = (name) => {
-        // A simple validation: check for Thai characters, a space (for first/last name), and not empty.
-        return !!name && thaiCharactersRegex.test(name) && name.includes(' ');
-      };
-
-      // Handles the file upload and parsing
-      const handleFileChange = (e) => {
-        const uploadedFile = e.target.files[0];
-        if (uploadedFile) {
-          setFile(uploadedFile);
-          Papa.parse(uploadedFile, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (result) => {
-              setCsvData(result.data);
-              validateData(result.data);
-            },
-          });
-        }
-      };
-
-      // Main validation function
-      const validateData = (data) => {
-        const results = data.map((row) => {
-          // Find the correct keys for the fields (e.g., 'thaiid', 'id card', 'เลขบัตรประชาชน')
-          const idKey = Object.keys(row).find(key => key.toLowerCase().includes('id') || key.toLowerCase().includes('บัตร'));
-          const addressKey = Object.keys(row).find(key => key.toLowerCase().includes('address') || key.toLowerCase().includes('ที่อยู่'));
-          const nameKey = Object.keys(row).find(key => key.toLowerCase().includes('name') || key.toLowerCase().includes('ชื่อ'));
-
-          const thaiId = row[idKey] || '';
-          const thaiAddress = row[addressKey] || '';
-          const fullName = row[nameKey] || '';
-
-          return {
-            originalRow: row,
-            isIdValid: validateThaiId(thaiId.trim()),
-            isAddressValid: validateThaiAddress(thaiAddress.trim()),
-            isNameValid: validateFullName(fullName.trim()),
-          };
-        });
-        setValidationResults(results);
-      };
-
-      // A component to display a validation status icon
-      const ValidationIcon = ({ isValid }) => {
-        return isValid ? <CheckCircleIcon /> : <XCircleIcon />;
-      };
-
-      return (
-        <div className="min-h-screen bg-gray-100 p-8 font-sans antialiased">
-          <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-xl">
-            <h1 className="text-4xl font-extrabold text-center text-gray-800 mb-2">CSV Validator</h1>
-            <p className="text-center text-gray-500 mb-8">Validate Thai data from a CSV file.</p>
-            
-            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 mb-8 hover:border-blue-500 transition-colors duration-200 cursor-pointer">
-              <DocumentTextIcon />
-              <p className="text-gray-600 mb-2">Drag & drop your CSV file here or click to upload.</p>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-            </div>
-            
-            {file && (
-              <div className="text-center text-sm text-gray-600 mb-4">
-                <p>Uploaded file: <span className="font-semibold text-blue-600">{file.name}</span></p>
-                <p>
-                  Validation Summary: {' '}
-                  <span className="font-semibold">
-                    {validationResults.filter(r => r.isIdValid && r.isAddressValid && r.isNameValid).length}
-                  </span>{' '}
-                  of{' '}
-                  <span className="font-semibold">
-                    {validationResults.length}
-                  </span>{' '}
-                  rows are valid.
-                </p>
-              </div>
-            )}
-
-            {validationResults.length > 0 && (
-              <div className="overflow-x-auto rounded-xl shadow-md">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        #
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Full Name (Thai)
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Thai ID Card
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Thai Address
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {validationResults.map((result, index) => (
-                      <tr key={index} className="hover:bg-gray-50 transition-colors duration-100">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center space-x-2">
-                            <ValidationIcon isValid={result.isNameValid} />
-                            <span>{Object.values(result.originalRow)[Object.keys(result.originalRow).findIndex(key => key.toLowerCase().includes('name') || key.toLowerCase().includes('ชื่อ'))]}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center space-x-2">
-                            <ValidationIcon isValid={result.isIdValid} />
-                            <span>{Object.values(result.originalRow)[Object.keys(result.originalRow).findIndex(key => key.toLowerCase().includes('id') || key.toLowerCase().includes('บัตร'))]}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center space-x-2">
-                            <ValidationIcon isValid={result.isAddressValid} />
-                            <span>{Object.values(result.originalRow)[Object.keys(result.originalRow).findIndex(key => key.toLowerCase().includes('address') || key.toLowerCase().includes('ที่อยู่'))]}</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+        <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
+            <input 
+                type="file" 
+                id="file-input" 
+                accept=".csv" 
+                class="block w-full text-sm text-gray-500
+                       file:mr-4 file:py-2 file:px-4
+                       file:rounded-full file:border-0
+                       file:text-sm file:font-semibold
+                       file:bg-violet-50 file:text-violet-700
+                       hover:file:bg-violet-100"
+            />
+            <button 
+                id="validate-button" 
+                class="w-full md:w-auto px-6 py-2 bg-indigo-600 text-white font-semibold rounded-full shadow-lg
+                       hover:bg-indigo-700 transition duration-300 ease-in-out"
+            >
+                Validate
+            </button>
         </div>
-      );
-    };
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(
-      <React.StrictMode>
-        <App />
-      </React.StrictMode>
-    );
-  </script>
+        <div id="loading-indicator" class="hidden text-center text-indigo-600 mb-4">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-8 w-8 mx-auto mb-2"></div>
+            Validating data...
+        </div>
+
+        <div id="results-container" class="mt-8 overflow-x-auto">
+            <!-- Results table will be rendered here -->
+        </div>
+
+        <!-- Custom Modal for Errors -->
+        <div id="error-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Error</h3>
+                    <div class="mt-2 px-7 py-3">
+                        <p id="error-message" class="text-sm text-gray-500"></p>
+                    </div>
+                    <div class="items-center px-4 py-3">
+                        <button id="close-modal-btn" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('file-input');
+            const validateButton = document.getElementById('validate-button');
+            const resultsContainer = document.getElementById('results-container');
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const errorModal = document.getElementById('error-modal');
+            const errorMessage = document.getElementById('error-message');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+
+            /**
+             * Displays an error message in a modal.
+             * @param {string} message - The error message to display.
+             */
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorModal.classList.remove('hidden');
+            }
+
+            // Close the error modal
+            closeModalBtn.addEventListener('click', () => {
+                errorModal.classList.add('hidden');
+            });
+
+            /**
+             * Hides the loading indicator and enables the validate button.
+             */
+            function toggleLoading(isLoading) {
+                if (isLoading) {
+                    loadingIndicator.classList.remove('hidden');
+                    validateButton.disabled = true;
+                    validateButton.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    loadingIndicator.classList.add('hidden');
+                    validateButton.disabled = false;
+                    validateButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+
+            validateButton.addEventListener('click', () => {
+                const file = fileInput.files[0];
+                if (!file) {
+                    showError("Please select a CSV file first.");
+                    return;
+                }
+
+                toggleLoading(true);
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    processCSV(text);
+                };
+                reader.onerror = function() {
+                    showError("Failed to read the file.");
+                    toggleLoading(false);
+                };
+                reader.readAsText(file, 'TIS-620'); // Use TIS-620 encoding for Thai characters
+            });
+
+            /**
+             * Processes the CSV text and initiates validation.
+             * @param {string} csvText - The raw CSV content as a string.
+             */
+            function processCSV(csvText) {
+                try {
+                    const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
+                    if (lines.length < 2) {
+                        showError("CSV file is empty or has no data rows.");
+                        toggleLoading(false);
+                        return;
+                    }
+                    const headers = lines[0].split(',').map(h => h.trim());
+                    const data = lines.slice(1).map(line => {
+                        const values = line.split(',');
+                        let row = {};
+                        headers.forEach((header, i) => {
+                            row[header] = values[i] ? values[i].trim() : '';
+                        });
+                        return row;
+                    });
+                    
+                    const validatedData = validateData(data);
+                    renderResults(validatedData);
+                } catch (error) {
+                    console.error("Error processing CSV:", error);
+                    showError("An error occurred while processing the CSV file.");
+                } finally {
+                    toggleLoading(false);
+                }
+            }
+
+            /**
+             * Validates each row of data against the specified rules.
+             * @param {Array<Object>} data - The parsed CSV data.
+             * @returns {Array<Object>} The data with validation results added.
+             */
+            function validateData(data) {
+                return data.map(row => {
+                    const validation = {
+                        idCard: validateThaiId(row['thai_id_card']),
+                        address: validateThaiAddress(row['address']),
+                        fullName: validateThaiName(row['full_name'])
+                    };
+                    const isValid = validation.idCard.isValid && validation.address.isValid && validation.fullName.isValid;
+                    return { ...row, validation, isValid };
+                });
+            }
+
+            /**
+             * Renders the validation results in a table.
+             * @param {Array<Object>} validatedData - The data with validation results.
+             */
+            function renderResults(validatedData) {
+                const totalRows = validatedData.length;
+                const validRows = validatedData.filter(row => row.isValid).length;
+                
+                const summaryHtml = `
+                    <div class="mb-4 p-4 rounded-lg bg-gray-50 shadow-inner">
+                        <p class="text-lg font-semibold text-gray-700">Validation Summary</p>
+                        <p class="text-sm text-gray-500">Total Rows: ${totalRows} | Valid Rows: ${validRows} | Invalid Rows: ${totalRows - validRows}</p>
+                    </div>
+                `;
+
+                let tableHtml = `
+                    <table class="min-w-full divide-y divide-gray-200 rounded-lg shadow-md">
+                        <thead class="bg-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thai ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Errors</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                `;
+
+                validatedData.forEach(row => {
+                    const statusIcon = row.isValid 
+                        ? `<svg class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
+                        : `<svg class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                    
+                    const errors = [];
+                    if (!row.validation.idCard.isValid) errors.push(row.validation.idCard.error);
+                    if (!row.validation.address.isValid) errors.push(row.validation.address.error);
+                    if (!row.validation.fullName.isValid) errors.push(row.validation.fullName.error);
+                    
+                    const errorList = errors.map(err => `<li class="text-red-500 text-sm">${err}</li>`).join('');
+
+                    tableHtml += `
+                        <tr class="${row.isValid ? 'bg-green-50' : 'bg-red-50'}">
+                            <td class="px-6 py-4 whitespace-nowrap"><div class="flex items-center justify-center">${statusIcon}</div></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row['thai_id_card']}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row['full_name']}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">${row['address']}</td>
+                            <td class="px-6 py-4 text-sm text-gray-500">
+                                ${errors.length > 0 ? `<ul class="list-disc list-inside">${errorList}</ul>` : 'No errors'}
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tableHtml += `</tbody></table>`;
+                resultsContainer.innerHTML = summaryHtml + tableHtml;
+            }
+
+            /**
+             * Validates a Thai National ID card number using the checksum algorithm.
+             * @param {string} id - The 13-digit ID number.
+             * @returns {{isValid: boolean, error: string}}
+             */
+            function validateThaiId(id) {
+                const normalizedId = String(id).replace(/\s/g, ''); // Remove spaces
+                if (!/^\d{13}$/.test(normalizedId)) {
+                    return { isValid: false, error: 'Invalid ID format.' };
+                }
+                const numbers = normalizedId.split('').map(Number);
+                let sum = 0;
+                for (let i = 0; i < 12; i++) {
+                    sum += numbers[i] * (13 - i);
+                }
+                const checkDigit = (11 - (sum % 11)) % 10;
+                if (checkDigit !== numbers[12]) {
+                    return { isValid: false, error: 'Invalid checksum.' };
+                }
+                return { isValid: true, error: null };
+            }
+
+            /**
+             * A simplified check for a valid Thai address.
+             * NOTE: This is a basic regex-based check and not a definitive validation.
+             * A full validation would require a comprehensive address database.
+             * @param {string} address - The address string.
+             * @returns {{isValid: boolean, error: string}}
+             */
+            function validateThaiAddress(address) {
+                const thaiAddressKeywords = /ตำบล|อำเภอ|จังหวัด|เขต|แขวง/g;
+                if (!address || !thaiAddressKeywords.test(address)) {
+                    return { isValid: false, error: 'Missing key Thai address components.' };
+                }
+                return { isValid: true, error: null };
+            }
+
+            /**
+             * Checks if a string contains at least one Thai character.
+             * @param {string} name - The name string.
+             * @returns {{isValid: boolean, error: string}}
+             */
+            function validateThaiName(name) {
+                const thaiCharRegex = /[\u0E00-\u0E7F]/;
+                if (!name || !thaiCharRegex.test(name)) {
+                    return { isValid: false, error: 'Does not contain Thai characters.' };
+                }
+                return { isValid: true, error: null };
+            }
+        });
+    </script>
 </body>
 </html>
